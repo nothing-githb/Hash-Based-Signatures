@@ -1,0 +1,3 @@
+/Users/halis/GitHub/Msc/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/halis/GitHub/Msc/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/halis/GitHub/Msc/cmake-build-debug/CMakeFiles/mcs.dir

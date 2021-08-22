@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="mcs"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/Users/halis/GitHub/Msc/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/Users/halis/GitHub/Msc/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/Users/halis/GitHub/Msc/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="mcs">
+				<Option output="/Users/halis/GitHub/Msc/cmake-build-debug/mcs" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/halis/GitHub/Msc/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/opt/homebrew/include"/>
+					<Add directory="/Users/halis/GitHub/Msc/inc"/>
+					<Add directory="/opt/homebrew/opt/openssl@1.1/include"/>
+					<Add directory="/opt/homebrew/opt/openssl/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/12.0.5/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 mcs"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="mcs/fast">
+				<Option output="/Users/halis/GitHub/Msc/cmake-build-debug/mcs" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/halis/GitHub/Msc/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/opt/homebrew/include"/>
+					<Add directory="/Users/halis/GitHub/Msc/inc"/>
+					<Add directory="/opt/homebrew/opt/openssl@1.1/include"/>
+					<Add directory="/opt/homebrew/opt/openssl/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/12.0.5/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 mcs/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/halis/GitHub/Msc/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/Users/halis/GitHub/Msc/inc/file.h">
+			<Option target="mcs"/>
+		</Unit>
+		<Unit filename="/Users/halis/GitHub/Msc/inc/lamport.h">
+			<Option target="mcs"/>
+		</Unit>
+		<Unit filename="/Users/halis/GitHub/Msc/main.c">
+			<Option target="mcs"/>
+		</Unit>
+		<Unit filename="/Users/halis/GitHub/Msc/src/file.c">
+			<Option target="mcs"/>
+		</Unit>
+		<Unit filename="/Users/halis/GitHub/Msc/src/lamport.c">
+			<Option target="mcs"/>
+		</Unit>
+		<Unit filename="/Users/halis/GitHub/Msc/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
