@@ -6,6 +6,12 @@
 
 #IncludeRegexTransform: 
 
+../inc/lamport.h
+types.h
+-
+
+../inc/types.h
+
 /Users/halis/GitHub/Msc/main.c
 stdio.h
 -
@@ -14,34 +20,6 @@ string.h
 sodium.h
 -
 lamport.h
--
-types.h
--
-
-/Users/halis/GitHub/Msc/src/file.c
-stdio.h
--
-stdlib.h
--
-fcntl.h
--
-sys/stat.h
--
-sys/types.h
--
-sys/mman.h
--
-string.h
--
-file.h
--
-
-/Users/halis/GitHub/Msc/src/lamport.c
-sodium.h
--
-lamport.h
--
-string.h
 -
 types.h
 -
