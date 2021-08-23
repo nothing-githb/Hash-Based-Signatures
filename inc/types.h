@@ -4,6 +4,8 @@
 #define PRINT   0
 #define TWO     2
 
+#define __maybe_unused  __attribute__((unused))
+
 typedef void * ADDR;
 
 typedef enum
@@ -16,9 +18,10 @@ typedef struct
 {
     int LBit;
     int NBit;
-    char *msg;
+    unsigned char *msg;
     int msgLen;
     ADDR msgHash;
+    ADDR IP;
     ADDR keys;
     ADDR hashes;
     ADDR signature;

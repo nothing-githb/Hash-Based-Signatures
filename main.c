@@ -5,21 +5,23 @@
 
 #include <lamport.h>
 #include <types.h>
+#include <openssl/aes.h>
+#include <openssl/des.h>
 
 
 #define INIT_SODIUM do{                                                     \
     if (sodium_init() < 0) printf("Sodium initialization failed \n\r");     \
     else    printf("Sodium initialized.\n\r");  }while(0)
 
-static inline char * getMessage()
+static inline unsigned char * getMessage()
 {
-    char *msg = NULL;
+    unsigned char *msg = NULL;
     char str[256];
     printf("Write message (Max 256) : ");
     scanf("%[^\n]s",str);
-    msg = (char *) malloc(strlen(str));
-    strncpy(msg, str, strlen(str));
-    //printf("%s - %d \n\r",str, strlen(str));
+    lamport.msgLen = strlen(((const char *)str));
+    msg = (unsigned char *) malloc(lamport.msgLen * sizeof(char));
+    memcpy(msg, str, lamport.msgLen);
     return msg;
 }
 
@@ -31,7 +33,7 @@ static inline int getNumFromUser(const char *msg)
     return num;
 }
 
-int main(int argc, char *argv[])
+int main(__maybe_unused int argc, __maybe_unused char *argv[])
 {
     INIT_SODIUM;
     unsigned char msgHash256[crypto_hash_sha256_BYTES];
@@ -39,7 +41,6 @@ int main(int argc, char *argv[])
     BOOL isverified;
 
     lamport.msg = getMessage();
-    lamport.msgLen = strlen(lamport.msg);
     printf("Length: %d - Msg: %s\n\r", lamport.msgLen, lamport.msg);
 
     lamport.LBit = getNumFromUser("Write length of random numbers (L): ");
@@ -48,19 +49,23 @@ int main(int argc, char *argv[])
     printf("Random numbers:\n N: %d , Length: %d bit , %d bytes\n", lamport.NBit, lamport.LBit, lamport.LBit / 8);
     printf("Hashes:\n N: %d , Length: %d bit , %d bytes\n", lamport.NBit, lamport.NBit, lamport.NBit / 8);
 
-    generateKeys(lamport.LBit, lamport.NBit * 2);
+    //generateKeys(lamport.LBit, lamport.NBit * 2);
+    // randomly generated and stored IP
+    lamport.IP = malloc(BIT_TO_BYTE(lamport.LBit) * sizeof(char));
+    randombytes_buf(lamport.IP,BIT_TO_BYTE(lamport.LBit));
+    generateKeysWithIP(lamport.LBit, lamport.NBit * 2, lamport.IP);
 
-    crypto_hash_sha256(msgHash256, lamport.msg, lamport.msgLen);
+    crypto_hash_sha256(msgHash256, lamport.msg, lamport.msgLen);    // Calculate hash of message
 
     lamport.msgHash = malloc(BIT_TO_BYTE(lamport.NBit) * sizeof(char));
     memcpy(lamport.msgHash, msgHash256, BIT_TO_BYTE(lamport.NBit));
 
     signMsg(lamport.msg, lamport.msgHash);
 
-    printf("%d \n", lamport.msg[0] & 0x02);
+    printf("%d \n", lamport.msg[0] & 0x01);
     // change first bit 1 to 0
-    //lamport.msg[0] = lamport.msg[0] | 0x02;
-    printf("%d \n", lamport.msg[0] & 0x02);
+    //lamport.msg[0] = lamport.msg[0] & 0x00;
+    printf("%d \n", lamport.msg[0] & 0x01);
 
     // If you want to change the message, you sould change msg before this method.
     crypto_hash_sha256(msgHash256, lamport.msg, lamport.msgLen);

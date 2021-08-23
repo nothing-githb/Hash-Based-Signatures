@@ -7,13 +7,7 @@
 #include <string.h>
 #include <types.h>
 
-#define CONTEXT "Examples"
-
-uint8_t master_key[crypto_kdf_KEYBYTES];
-
-uint8_t subkey1[32];
-uint8_t subkey2[32];
-uint8_t subkey3[64];
+#include <openssl/aes.h>
 
 tLamport lamport = {
         .LBit = 0,
@@ -23,8 +17,54 @@ tLamport lamport = {
         .signature = NULL,
         .msg = NULL,
         .msgLen = 0,
-        .msgHash = NULL
+        .msgHash = NULL,
+        .IP = NULL
 };
+
+/**
+ *
+ * @param input
+ * @param output
+ * @param key
+ * @param byte
+ * @return
+ */
+static void encryptWithGivenSize(unsigned char *input, unsigned char *output, ADDR key, size_t byte)
+{
+    int round = byte / 16; // TODO >> 4
+    int remainsByte = byte % 16;
+    int diff = byte - remainsByte;
+    size_t padded_buflen_p;
+    unsigned char remainsIn[16];
+    unsigned char remainsOut[16];
+
+    while (round > 0)
+    {
+        AES_encrypt(input, output, key);
+        input += 16;
+        output += 16;
+        round--;
+    }
+    if ( remainsByte > 0)
+    {   // TODO optimize
+        memcpy(remainsIn, input, remainsByte);
+
+        // Do padding
+        if ( 0 != sodium_pad(&padded_buflen_p, remainsIn,
+                       remainsByte, 16, 16))
+        {
+            printf("Error \n");
+            exit(-1);
+        }
+        AES_encrypt(remainsIn, remainsOut, key);    // Encrypt
+
+        memcpy(input, remainsOut, remainsByte); // Copy the remains bit
+    }
+
+    input -= diff;
+    output -= diff;
+    memcpy(input, output, diff);
+}
 
 /**
  *
@@ -67,38 +107,42 @@ void generateKeys(int length, int totalNumber)
     return;
 }
 
+/**
+ *
+ * @param length
+ * @param totalNumber
+ * @param IP
+ */
 void generateKeysWithIP(int length, int totalNumber, const char *IP)
 {
-    unsigned char out[crypto_hash_sha256_BYTES];
-    unsigned char key[crypto_aead_aes256gcm_KEYBYTES];
-    unsigned char nonce[crypto_aead_aes256gcm_NPUBBYTES];
-    unsigned char ciphertext[4 + crypto_aead_aes256gcm_ABYTES];
-    unsigned long long ciphertext_len;
     ADDR addr;
+    AES_KEY AESKey;
     int i = 0, j = 0;
     int N = totalNumber / 2;
     int NByte = N / 8, LByte = length / 8;
+    unsigned char ip[LByte], out[LByte], key[16];
+    unsigned char hash[crypto_hash_sha256_BYTES];
 
-    crypto_aead_aes256gcm_keygen(key);
-    lamport.hashes = malloc(N * TWO * NByte * sizeof(char));
+    randombytes_buf(key, 16);   // Generate random key
+    AES_set_encrypt_key(&key, 128, &AESKey);    // Set AES encryption key
+
+    memcpy(ip, IP, LByte);  // Copy IP to local ip
+
+    lamport.hashes = malloc(N * TWO * NByte * sizeof(char));    // Allocate memory for hash values(public keys)
+
     if (PRINT)
     {
-        printf("sizeof keys : %d \n", N * TWO * LByte );
+        printf("Keys not allocated in memory!!\n");
         printf("sizeof hashes : %d \n", N * TWO * NByte );
     }
     for (i = 0; i < N; i++)
     {
         for (j = 0; j < TWO; j++)
         {
-            randombytes_buf(nonce, sizeof nonce);
-            crypto_aead_aes256gcm_encrypt(ciphertext, &ciphertext_len,
-                                          IP, 4,
-                                          ADDITIONAL_DATA, ADDITIONAL_DATA_LEN,
-                                          NULL, nonce, key);
-            addr = lamport.keys + i*TWO*LByte + j*LByte;
-            crypto_hash_sha256(out, addr, LByte);
-            addr = lamport.hashes + i*TWO*NByte + j*NByte;
-            memcpy(addr, out, NByte);
+            encryptWithGivenSize(ip, out, &AESKey, LByte);
+            crypto_hash_sha256(hash, out, LByte);   // 256 bit hashing
+            addr = lamport.hashes + i*TWO*NByte + j*NByte;  // TODO optimize
+            memcpy(addr, hash, NByte);
         }
     }
     if (PRINT) printf("Keys generated\n\r");
@@ -142,13 +186,20 @@ void signMsg(const unsigned char *msg, const unsigned char *msgHash)
     }
 }
 
-BOOL verifyMsg(const unsigned char *msg, ADDR signature, ADDR hashes, const unsigned char *msgHash)
+/**
+ *
+ * @param msg
+ * @param signature
+ * @param hashes
+ * @param msgHash
+ * @return
+ */
+BOOL verifyMsg(const unsigned char __maybe_unused *msg, ADDR signature, ADDR hashes, const unsigned char *msgHash)
 {
     BOOL isVerified = TRUE;
     int i = 0, j = 0;
     unsigned char c;
     int NByte = BIT_TO_BYTE(lamport.NBit);
-
 
     for (i = 0; i < NByte; i++)
     {
@@ -167,8 +218,8 @@ BOOL verifyMsg(const unsigned char *msg, ADDR signature, ADDR hashes, const unsi
                 printf("sig: byte: %d \n", i * 8 * NByte + j * NByte);
                 printf("hash: i: %d , j: %d\n", (i * 8) + j, c & 1);
             }
-            isVerified = (0 == memcmp(lamport.signature + i * 8 * NByte + j * NByte,
-                   ADDR_GET_HASH(lamport.hashes, (i * 8) + j ,c & 1), NByte));
+            isVerified = (0 == memcmp(signature + i * 8 * NByte + j * NByte,
+                   ADDR_GET_HASH(hashes, (i * 8) + j ,c & 1), NByte));
         }
     }
     return isVerified;

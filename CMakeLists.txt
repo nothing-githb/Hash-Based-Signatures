@@ -22,7 +22,13 @@ ENDIF (LIBSODIUM_FOUND)
 include_directories("/opt/homebrew/include")
 include_directories("/Users/halis/GitHub/Msc/inc")
 include_directories("/opt/homebrew/opt/openssl@1.1/include")
-include_directories("/opt/homebrew/opt/openssl/include")
+
+set(CMAKE_OPENSSL_FLAGS "-L/opt/homebrew/opt/openssl@1.1/lib -I/opt/homebrew/opt/openssl@1.1/include -lssl -lcrypto")
+
+set(CMAKE_WARNING_FLAGS "-Wall -Wextra")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_OPENSSL_FLAGS} ${CMAKE_WARNING_FLAGS}")
+
 
 add_executable(mcs main.c
         src/file.c inc/file.h
