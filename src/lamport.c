@@ -29,7 +29,7 @@ tLamport lamport = {
  * @param byte
  * @return
  */
-static void encryptWithGivenSize(unsigned char *input, unsigned char *output, ADDR key, size_t byte)
+static inline void encryptWithGivenSize(unsigned char *input, unsigned char *output, ADDR key, size_t byte)
 {
     int round = byte / 16; // TODO >> 4
     int remainsByte = byte % 16;
@@ -49,13 +49,8 @@ static void encryptWithGivenSize(unsigned char *input, unsigned char *output, AD
     {   // TODO optimize
         memcpy(remainsIn, input, remainsByte);
 
-        // Do padding
-        if ( 0 != sodium_pad(&padded_buflen_p, remainsIn,
-                       remainsByte, 16, 16))
-        {
-            printf("Error \n");
-            exit(-1);
-        }
+        memset(remainsIn + remainsByte, 0, 16 - remainsByte);    // Do padding
+
         AES_encrypt(remainsIn, remainsOut, key);    // Encrypt
 
         memcpy(input, remainsOut, remainsByte); // Copy the remains bit
@@ -197,6 +192,7 @@ void signMsg(const unsigned char *msg, const unsigned char *msgHash)
 BOOL verifyMsg(const unsigned char __maybe_unused *msg, ADDR signature, ADDR hashes, const unsigned char *msgHash)
 {
     BOOL isVerified = TRUE;
+    ADDR addr1, addr2;
     int i = 0, j = 0;
     unsigned char c;
     int NByte = BIT_TO_BYTE(lamport.NBit);
@@ -218,6 +214,8 @@ BOOL verifyMsg(const unsigned char __maybe_unused *msg, ADDR signature, ADDR has
                 printf("sig: byte: %d \n", i * 8 * NByte + j * NByte);
                 printf("hash: i: %d , j: %d\n", (i * 8) + j, c & 1);
             }
+            addr1 = ADDR_GET_HASH(hashes, (i * 8) + j ,c & 1);
+            addr2 = signature + i * 8 * NByte + j * NByte;
             isVerified = (0 == memcmp(signature + i * 8 * NByte + j * NByte,
                    ADDR_GET_HASH(hashes, (i * 8) + j ,c & 1), NByte));
         }

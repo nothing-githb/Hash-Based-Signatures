@@ -33,6 +33,12 @@ static inline int getNumFromUser(const char *msg)
     return num;
 }
 
+static inline void changeBit(int base, int index)
+{
+    if (BIT_CHECK(base, index)) BIT_CLEAR(base, index);
+    else    BIT_SET(base, index);
+}
+
 int main(__maybe_unused int argc, __maybe_unused char *argv[])
 {
     INIT_SODIUM;
@@ -49,7 +55,6 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
     printf("Random numbers:\n N: %d , Length: %d bit , %d bytes\n", lamport.NBit, lamport.LBit, lamport.LBit / 8);
     printf("Hashes:\n N: %d , Length: %d bit , %d bytes\n", lamport.NBit, lamport.NBit, lamport.NBit / 8);
 
-    //generateKeys(lamport.LBit, lamport.NBit * 2);
     // randomly generated and stored IP
     lamport.IP = malloc(BIT_TO_BYTE(lamport.LBit) * sizeof(char));
     randombytes_buf(lamport.IP,BIT_TO_BYTE(lamport.LBit));
@@ -64,7 +69,7 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
 
     printf("%d \n", lamport.msg[0] & 0x01);
     // change first bit 1 to 0
-    //lamport.msg[0] = lamport.msg[0] & 0x00;
+    lamport.msg[0] = lamport.msg[0] & 0x00;
     printf("%d \n", lamport.msg[0] & 0x01);
 
     // If you want to change the message, you sould change msg before this method.
