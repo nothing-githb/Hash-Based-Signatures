@@ -21,6 +21,15 @@ tLamport lamport = {
         .IP = NULL
 };
 
+static inline void incrementOne(unsigned char *bytes, int size)
+{
+    int i;
+    for (i = size-1; i >= 0; i--)
+    {
+        if (0 == ++bytes[i]) continue;
+        else break;
+    }
+}
 /**
  *
  * @param input
@@ -31,12 +40,10 @@ tLamport lamport = {
  */
 static inline void encryptWithGivenSize(unsigned char *input, unsigned char *output, ADDR key, size_t byte)
 {
-    int round = byte / 16; // TODO >> 4
-    int remainsByte = byte % 16;
-    int diff = byte - remainsByte;
-    size_t padded_buflen_p;
-    unsigned char remainsIn[16];
-    unsigned char remainsOut[16];
+    unsigned int round = byte >> 4;                 // byte / 16
+    const unsigned int remainderBytes = byte & 0xF;    // byte % 16
+    int diff = byte - remainderBytes;
+    unsigned char remainsIn[16], remainsOut[16];
 
     while (round > 0)
     {
@@ -45,20 +52,16 @@ static inline void encryptWithGivenSize(unsigned char *input, unsigned char *out
         output += 16;
         round--;
     }
-    if ( remainsByte > 0)
-    {   // TODO optimize
-        memcpy(remainsIn, input, remainsByte);
-
-        memset(remainsIn + remainsByte, 0, 16 - remainsByte);    // Do padding
-
+    if (remainderBytes > 0)
+    {
+        memcpy(remainsIn, input, remainderBytes);  // Copy remainder bytes
+        memset(remainsIn + remainderBytes, 0, 16 - remainderBytes);    // Do padding after remainder bytes
         AES_encrypt(remainsIn, remainsOut, key);    // Encrypt
-
-        memcpy(input, remainsOut, remainsByte); // Copy the remains bit
+        memcpy(output, remainsOut, remainderBytes);    // Get encrypted
     }
-
     input -= diff;
     output -= diff;
-    memcpy(input, output, diff);
+    incrementOne(input, byte);
 }
 
 /**
