@@ -33,10 +33,13 @@ static inline int getNumFromUser(const char *msg)
     return num;
 }
 
-static inline void changeBit(int base, int index)
+static inline void changeBitOfByte(int *base, const unsigned int index)
 {
+    printf("%d. bit:  %d --> ", index, BIT_CHECK(base, index));
+    // TODO optimize, change with table instead of bbit shifting
     if (BIT_CHECK(base, index)) BIT_CLEAR(base, index);
     else    BIT_SET(base, index);
+    printf("%d\n\r", BIT_CHECK(base, index));
 }
 
 int main(__maybe_unused int argc, __maybe_unused char *argv[])
@@ -67,10 +70,7 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
 
     signMsg(lamport.msg, lamport.msgHash);
 
-    printf("%d \n", lamport.msg[0] & 0x01);
-    // change first bit 1 to 0
-    lamport.msg[0] = lamport.msg[0] & 0x00;
-    printf("%d \n", lamport.msg[0] & 0x01);
+    //changeBitOfByte((int *) &lamport.msg[0], 0);    // Change bit
 
     // If you want to change the message, you sould change msg before this method.
     crypto_hash_sha256(msgHash256, lamport.msg, lamport.msgLen);
