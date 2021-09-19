@@ -12,8 +12,8 @@ extern tLamport lamport;
 #define BIT_TO_BYTE(p)  (p/8)
 #define BYTE_TO_BIT(p)  (p*8)
 
-#define ADDR_GET_KEY(keys, i, j)        ((keys) + ((i)*TWO*BIT_TO_BYTE(lamport.LBit)) + ((j)*BIT_TO_BYTE(lamport.LBit))
-#define ADDR_GET_HASH(hashes, i, j)     ((hashes) + ((i)*TWO*BIT_TO_BYTE(lamport.NBit)) + ((j)*BIT_TO_BYTE(lamport.NBit)))
+#define ADDR_GET_KEY(keys, i)                   ((keys) + (i * BIT_TO_BYTE(lamport.LBit)))
+#define ADDR_GET_SIGNATURE(signature, i)        ((signature) + (i * BIT_TO_BYTE(lamport.LBit)))
 
 /**
  *
@@ -46,6 +46,6 @@ void signMsg(const unsigned char *msg, const unsigned char *msgHash);
  * @param msgHash
  * @return
  */
-BOOL verifyMsg(const unsigned char *msg, ADDR signature, ADDR hashes, const unsigned char *msgHash);
+BOOL verifyMsg(const unsigned char *msg, ADDR signature, const unsigned char *msgHash);
 
 #endif //MSC_LAMPORT_H
