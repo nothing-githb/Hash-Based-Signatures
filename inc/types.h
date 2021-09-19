@@ -5,6 +5,7 @@
 
 #define PRINT   1
 #define TWO     2
+#define CHANGE_BIT_SERVICE 1
 
 #define BIT_SET(base, index)    do{(*base) |= (1 << (index));}while(0)
 #define BIT_CLEAR(base, index)  do{(*base) &= ~(1 << (index));}while(0)
@@ -25,22 +26,28 @@ typedef enum
 }BOOL;
 
 typedef struct{
-    int n;
-    int p;
+    unsigned int n;
+    unsigned int p;
 }tCombValues;
+
+typedef struct{
+    ADDR msg;
+    unsigned int msgLen;
+    ADDR hash;
+}msg_node;
 
 typedef struct
 {
-    int LBit;
-    int NBit;
+    unsigned int LBit;
+    unsigned int NBit;
     tCombValues combValues;
-    unsigned char *msg;
-    int msgLen;
-    ADDR msgHash;
+    msg_node *messages;
     mpz_t msgHashValue;
     ADDR IP;
-    ADDR keys;
+    ADDR pre_images;
+    ADDR hash_images;
     ADDR signature;
+    int numberOfMsg;
 }tLamport;
 
 #endif //TYPES_H

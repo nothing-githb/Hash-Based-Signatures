@@ -16,7 +16,8 @@ tLamport lamport = {
         .NBit = 0,
         .combValues.n = 0,
         .combValues.p = 0,
-        .keys = NULL,
+        .pre_images = NULL,
+        .hash_images = NULL,
         .signature = NULL,
         .msg = NULL,
         .msgLen = 0,
@@ -60,10 +61,11 @@ static inline void encryptWithGivenSize(unsigned char *input, unsigned char *out
     incrementOne(input, byte);
 }
 
-void generateKeysWithIP(int length, int n, const char *IP)
+void generateKeysWithIP(int length, int n, const char *IP, int t)
 {
+    unsigned char msgHash512[crypto_hash_sha512_BYTES];
     AES_KEY AESKey;
-    int i = 0;
+    int i, j;
     int LByte = length / 8;
     unsigned char ip[LByte], out[LByte], key[16];
 
@@ -72,13 +74,19 @@ void generateKeysWithIP(int length, int n, const char *IP)
 
     memcpy(ip, IP, LByte);  // Copy IP to local ip
 
-    lamport.keys = malloc(n * LByte * sizeof(char));    // Allocate memory for hash values(public keys)
+    lamport.pre_images = malloc(t * n * LByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
+    lamport.hash_images = malloc(t * n * LByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
 
-    for (i = 0; i < n; i++)
+    for (j = 0; j < t; j++)
     {
+        for (i = 0; i < n; i++)
+        {
             encryptWithGivenSize(ip, out, &AESKey, LByte);
-            memcpy(ADDR_GET_KEY(lamport.keys, i), out, LByte);
+            memcpy(ADDR_GET_KEY(lamport.pre_images, (j * n + i)), out, LByte);
+
+        }
     }
+
     return;
 }
 
@@ -101,7 +109,7 @@ void signMsg(const unsigned char *msg, const unsigned char *msgHash)
 
     for(i = 0; i < lamport.combValues.p; i++)
         memcpy(ADDR_GET_SIGNATURE(lamport.signature, i),
-               ADDR_GET_KEY(lamport.keys, a[i]-1), LByte);
+               ADDR_GET_KEY(lamport.pre_images, a[i] - 1), LByte);
 }
 
 BOOL verifyMsg(const unsigned char __maybe_unused *msg, ADDR signature, const unsigned char *msgHash)
@@ -121,7 +129,7 @@ BOOL verifyMsg(const unsigned char __maybe_unused *msg, ADDR signature, const un
     for (i = 0; i < lamport.combValues.p && isVerified; i++)
     {
             isVerified = (0 == memcmp(ADDR_GET_SIGNATURE(signature, i),
-                                      ADDR_GET_KEY(lamport.keys, a[i] - 1), NByte));
+                                      ADDR_GET_KEY(lamport.pre_images, a[i] - 1), NByte));
     }
 
     return isVerified;

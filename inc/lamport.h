@@ -28,7 +28,7 @@ void generateKeys(int length, int totalNumber);
  * @param totalNumber
  * @param IP
  */
-void generateKeysWithIP(int length, int totalNumber, const char *IP);
+void generateKeysWithIP(int length, int totalNumber, const char *IP, int numberOfMsg);
 
 /**
  *

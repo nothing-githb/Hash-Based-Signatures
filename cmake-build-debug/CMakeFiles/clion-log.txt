@@ -1,7 +1,0 @@
-/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "CodeBlocks - Unix Makefiles" /Users/halis/GitHub/Msc
--- Found libsodium:
---   (Headers)       /opt/homebrew/include
---   (Library)       /opt/homebrew/lib/libsodium.dylib
--- Configuring done
--- Generating done
--- Build files have been written to: /Users/halis/GitHub/Msc/cmake-build-debug

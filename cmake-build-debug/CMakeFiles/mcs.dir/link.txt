@@ -1,1 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/cc -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX11.3.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/mcs.dir/main.c.o CMakeFiles/mcs.dir/src/file.c.o CMakeFiles/mcs.dir/src/lamport.c.o -o mcs  /opt/homebrew/lib/libsodium.dylib 

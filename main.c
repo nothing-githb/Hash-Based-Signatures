@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-
+#include <assert.h>
 #include <sodium.h>
-
+#include <time.h>
 #include <lamport.h>
 #include <types.h>
 #include <openssl/aes.h>
@@ -26,12 +26,10 @@ static inline unsigned char * getMessage()
     return msg;
 }
 
-static inline int getNumFromUser(const char *msg)
+static inline void getNumFromUser(const char *msg, int *num)
 {
-    int num;
     printf("%s", msg);
-    scanf("%d",&num);
-    return num;
+    scanf("%d",num);
 }
 
 // TODO optimize, change with table instead of bbit shifting
@@ -60,12 +58,38 @@ static void printBytes(char *msg, ADDR addr, int length)
 static void changeBitService()
 {
     int byte, bit;
-    if( 0 != getNumFromUser("(0) no change \n(1) change\nChange bit service:"))
+    if( CHANGE_BIT_SERVICE )
     {
-        byte = getNumFromUser("Get nth byte for change:");
-        bit = getNumFromUser("Get nth bit for change: ");
+        getNumFromUser("Get nth byte for change:", &byte);
+        getNumFromUser("Get nth bit for change: ", &bit);
         changeBitOfByte(lamport.msg, byte, bit);    // Change bit
     }
+}
+
+static msg_node* generateMessages(int t)
+{
+    int i, random;
+    msg_node *messages = NULL;
+    msg_node *tmp_node = NULL;
+    char *tmp_msg = NULL;
+    time_t time1;
+
+    srand((unsigned) time(&time1)); // Initializes random number generator
+
+    messages =  (msg_node *) calloc(1, sizeof(msg_node) * t);
+
+    for (i = 0; i < t; i++)
+    {
+        random = (random = (rand() % 512)) > 0 ? random : 1;
+        tmp_msg = (char *) malloc(sizeof(char) * random);
+        randombytes_buf(tmp_msg, random);
+        messages[i].msg = tmp_msg;
+        messages[i].msgLen = random;
+        printf("%d bytes message generated\n", random);
+        printBytes("Message is:", messages[i].msg, messages[i].msgLen);
+    }
+
+    return messages;
 }
 
 int main(__maybe_unused int argc, __maybe_unused char *argv[])
@@ -75,33 +99,29 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
     ADDR verifyMsgHash;
     BOOL isverified;
 
-    lamport.msg = getMessage();
-    printf("Length: %d - Msg: %s\n\r", lamport.msgLen, lamport.msg);
+    getNumFromUser("Length of random numbers (L - bit): ", &lamport.LBit);
+    getNumFromUser("Hash length (N - bit): ", &lamport.NBit);
+    getNumFromUser("Write number of message: (T = 2 ^ n): ", &lamport.numberOfMsg);
 
-    lamport.LBit = getNumFromUser("Write length of random numbers (L - bit): ");
-    lamport.NBit = getNumFromUser("Write total length of message hash (N - bit): ");
+    assert(lamport.LBit % 8 == 0); // Length must be 8 ^ n
+    assert(lamport.NBit % 8 == 0); // Hash length must be 8 ^ n
+    assert(lamport.numberOfMsg % 8 == 0); // Number of message must be 2 ^ n
+
+    generateMessages(lamport.numberOfMsg);  // Generate t message with random length and random bytes
+
     lamport.combValues.n = combination_mapping[BIT_TO_BYTE(lamport.NBit) - 1][0];
     lamport.combValues.p = combination_mapping[BIT_TO_BYTE(lamport.NBit) - 1][1];
-
-    printf("Random numbers:\n N: %d P: %d, Length: %d bit , %d bytes\n",
-           lamport.combValues.n, lamport.combValues.p, lamport.LBit, BIT_TO_BYTE(lamport.LBit));
-
-    mpz_t comb;
-    mpz_init(comb);
-    choose(lamport.combValues.n, lamport.combValues.p, comb);
-    printf("C(%d, %d) = ", lamport.combValues.n, lamport.combValues.p);
-    gmp_printf("%20Zd\n", comb);
-    mpz_set_ui(comb, 1);
-    mpz_ui_pow_ui(comb, 2, lamport.NBit);
-    gmp_printf("2 ^ %d = %Zd\n", lamport.NBit, comb);
 
     // randomly generated and stored IP
     lamport.IP = malloc(BIT_TO_BYTE(lamport.LBit) * sizeof(char));
     randombytes_buf(lamport.IP,BIT_TO_BYTE(lamport.LBit));
 
-    generateKeysWithIP(lamport.LBit, lamport.combValues.n, lamport.IP);     // Generate keys
+    /**
+     * Generate pre-images and hash-images
+     */
+    generateKeysWithIP(lamport.LBit, lamport.combValues.n, lamport.IP, lamport.numberOfMsg);
 
-    crypto_hash_sha256(msgHash512, lamport.msg, lamport.msgLen);    // Calculate hash of message
+    crypto_hash_sha512(msgHash512, lamport.msg, lamport.msgLen);    // Calculate hash of message
 
     lamport.msgHash = malloc(BIT_TO_BYTE(lamport.NBit) * sizeof(char)); // TODO optimize
     memcpy(lamport.msgHash, msgHash512, BIT_TO_BYTE(lamport.NBit));
@@ -118,7 +138,7 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
 
     printBytes("hash 1", msgHash512, BIT_TO_BYTE(lamport.NBit));
     // If you want to change the message, you sould change msg before this method.
-    crypto_hash_sha256(msgHash512, lamport.msg, lamport.msgLen);
+    crypto_hash_sha512(msgHash512, lamport.msg, lamport.msgLen);
     printBytes("hash 2", msgHash512, BIT_TO_BYTE(lamport.NBit));
 
     verifyMsgHash = malloc(BIT_TO_BYTE(lamport.NBit) * sizeof(char));   // TODO optimize
@@ -132,7 +152,7 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
         printf("Message not verified\n");
 
     free(lamport.msg); free(lamport.msgHash); free(lamport.signature);
-    free(lamport.keys); free(verifyMsgHash);
+    free(lamport.pre_images); free(verifyMsgHash);
     mpz_clear(lamport.msgHashValue);
 
     return 0;
