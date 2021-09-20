@@ -66,7 +66,7 @@ void get_message_from_mapping(const unsigned int n, const unsigned int p, int *a
 {
     mpz_t comb;
     mpz_init(comb);
-    int i, j;
+    unsigned int i, j;
     for (i = 1; i <= p; i++)
     {
         for (j = (n - a[i] + 1); j <= (n - a[i-1] -1); j++) // TODO optimize
@@ -81,7 +81,7 @@ void get_message_from_mapping(const unsigned int n, const unsigned int p, int *a
 
 void get_mapping_from_message(mpz_t m, const unsigned int n, const unsigned int p, int *a)
 {
-    int i, q = 1;
+    unsigned int i, q = 1;
     mpz_t comb;
     mpz_init(comb);
     for(i = 1; i <= p; i++)

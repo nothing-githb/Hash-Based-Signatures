@@ -3,9 +3,9 @@
 
 #include <gmp.h>
 
-#define PRINT   1
-#define TWO     2
-#define CHANGE_BIT_SERVICE 1
+#define PRINT   0
+#define DEBUG   0
+#define CHANGE_BIT_SERVICE 0
 
 #define BIT_SET(base, index)    do{(*base) |= (1 << (index));}while(0)
 #define BIT_CLEAR(base, index)  do{(*base) &= ~(1 << (index));}while(0)
@@ -33,16 +33,13 @@ typedef struct{
 typedef struct{
     ADDR msg;
     unsigned int msgLen;
-    ADDR hash;
 }msg_node;
 
 typedef struct
 {
-    unsigned int LBit;
-    unsigned int NBit;
     tCombValues combValues;
     msg_node *messages;
-    mpz_t msgHashValue;
+    ADDR msgHash;
     ADDR IP;
     ADDR pre_images;
     ADDR hash_images;

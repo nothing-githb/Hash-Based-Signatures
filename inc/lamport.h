@@ -12,40 +12,12 @@ extern tLamport lamport;
 #define BIT_TO_BYTE(p)  (p/8)
 #define BYTE_TO_BIT(p)  (p*8)
 
-#define ADDR_GET_KEY(keys, i)                   ((keys) + (i * BIT_TO_BYTE(lamport.LBit)))
-#define ADDR_GET_SIGNATURE(signature, i)        ((signature) + (i * BIT_TO_BYTE(lamport.LBit)))
+#define GET_ADDR(addr, i, byte)                 ( (ADDR) (((char *)addr) + ((i) * (byte))) )
 
-/**
- *
- * @param length
- * @param totalNumber
- */
-void generateKeys(int length, int totalNumber);
+void generateKeysWithIP(int length, int hashLength, int totalNumber, const char *IP, int numberOfMsg);
 
-/**
- *
- * @param length
- * @param totalNumber
- * @param IP
- */
-void generateKeysWithIP(int length, int totalNumber, const char *IP, int numberOfMsg);
+void signMsg(ADDR msgHash, ADDR pre_images, int LBit, int NBit);
 
-/**
- *
- * @param msg
- * @param msgHash
- */
-
-void signMsg(const unsigned char *msg, const unsigned char *msgHash);
-
-/**
- *
- * @param msg
- * @param signature
- * @param hashes
- * @param msgHash
- * @return
- */
-BOOL verifyMsg(const unsigned char *msg, ADDR signature, const unsigned char *msgHash);
+BOOL verifyMsg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBit);
 
 #endif //MSC_LAMPORT_H
