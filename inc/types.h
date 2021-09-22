@@ -5,7 +5,7 @@
 
 #define PRINT   0
 #define DEBUG   0
-#define CHANGE_BIT_SERVICE 0
+#define CHANGE_BIT_SERVICE 1
 
 #define BIT_SET(base, index)    do{(*base) |= (1 << (index));}while(0)
 #define BIT_CLEAR(base, index)  do{(*base) &= ~(1 << (index));}while(0)
@@ -18,6 +18,8 @@
 #define __maybe_unused  __attribute__((unused))
 
 typedef void * ADDR;
+typedef signed int INT4;
+typedef unsigned int UINT4;
 
 typedef enum
 {
@@ -26,8 +28,8 @@ typedef enum
 }BOOL;
 
 typedef struct{
-    unsigned int n;
-    unsigned int p;
+    int n;
+    int p;
 }tCombValues;
 
 typedef struct{

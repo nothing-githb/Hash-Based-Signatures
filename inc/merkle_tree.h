@@ -5,23 +5,29 @@
 #ifndef MCS_MERKLE_TREE_H
 #define MCS_MERKLE_TREE_H
 
-#include <lamport.h>
+#include <types.h>
 
-#define GET_NODE(nodes, i)          ( &nodes[i] )
-#define GET_PARENT_INDEX(i)         ( ( (i) - 1) / 2 )
-#define GET_SIBLING_INDEX(i)        ( ( ( (i) % 2) == 0) ? ( (i) - 1 ) : ( (i) + 1 ) )
+
 #define GET_LEFT_INDEX(i)           ( ( (i) * 2 ) + 1)
 #define GET_RIGHT_INDEX(i)          ( ( (i) * 2 ) + 2)
 
+#define GET_ROOT_HASH(mt)           ( mt->nodes[0].hash )
+
 
 typedef struct mt_node {
-    unsigned char *hash;
+    ADDR hash;
 }mt_node_t;
 
-extern mt_node_t *mt;
+typedef struct merkle_tree{
+    mt_node_t *nodes;
+    int height;
+    int num_of_nodes;
+    int num_of_leaf_nodes;
+}mt_t;
 
-mt_node_t* build_mt(msg_node *messages, int numberOfMsg, int NByte);
+mt_node_t *build_mt(ADDR public_keys, int number_of_msg, int NByte);
 
+void getAuxList(int index, int *array, int mt_height);
 
 
 #endif //MCS_MERKLE_TREE_H

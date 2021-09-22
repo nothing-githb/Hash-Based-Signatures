@@ -84,15 +84,14 @@ void get_mapping_from_message(mpz_t m, const unsigned int n, const unsigned int 
     unsigned int i, q = 1;
     mpz_t comb;
     mpz_init(comb);
-    for(i = 1; i <= p; i++)
+    for(i = 1; i <= p; i++) // For loop 1 .. p
     {
-        choose(n - q, p - i, comb);
-        while (mpz_cmp(m, comb) > 0)
+        choose(n - q, p - i, comb); // Calculate combination
+        while (mpz_cmp(m, comb) > 0)    // While m > comb
         {
-            //m -= comb;
-            mpz_sub(m, m, comb);
+            mpz_sub(m, m, comb);    //m -= comb;
             q++;
-            choose(n - q, p - i, comb);
+            choose(n - q, p - i, comb); // Calculate combination
         }
         a[i-1] = q;
         q++;

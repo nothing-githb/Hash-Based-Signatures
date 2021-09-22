@@ -8,51 +8,12 @@
 #include <openssl/aes.h>
 #include <gmp.h>
 #include <mapping.h>    // combination_mapping array
+#include <merkle_tree.h>
+#include <helper.h>
 
 
 #define INIT_SODIUM do{ if (sodium_init() < 0) printf("Sodium initialization failed \n\r"); }while(0)
 
-static inline void getNumFromUser(const char *msg, int *num)
-{
-    printf("%s", msg);
-    scanf("%d",num);
-}
-
-// TODO optimize, change with table instead of bbit shifting
-static inline void changeBitOfByte(ADDR base, const unsigned int byte, const unsigned int bit)
-{
-    int *number = (int *)(&base[byte]);
-    printf("byte %d bit  %d : %d --> ", byte, bit, BIT_CHECK(number, bit));
-    if (BIT_CHECK(number, bit)) BIT_CLEAR(number, bit);
-    else    BIT_SET(number, bit);
-    printf("%d\n\r", BIT_CHECK(number, bit));
-}
-
-static void printBytes(const char *msg, ADDR addr, int length)
-{
-    int i;
-    printf("----%s---", msg);
-    for (i = 0; i < length; i++)
-    {
-        if (i % 20 == 0)
-            printf("\n");
-        printf("%d ", ((unsigned char *)addr)[i]);
-    }
-    printf("\n\n");
-}
-
-static void changeBitService(int LBit)
-{
-    int byte, bit;
-    if( CHANGE_BIT_SERVICE )
-    {
-        printBytes("Signature", lamport.signature, lamport.combValues.p * LBit / 8);
-        getNumFromUser("Get nth byte for change:", &byte);
-        getNumFromUser("Get nth bit for change: ", &bit);
-        changeBitOfByte(lamport.signature, byte, bit);    // Change bit
-        printBytes("Signature", lamport.signature, lamport.combValues.p * LBit / 8);
-    }
-}
 
 static msg_node* generateMessages(int t)
 {
@@ -91,6 +52,7 @@ static void init_system(int *NBit, int *NByte, int *LBit, int *LByte, int *msgNu
     *NByte = *NBit / 8;
     assert(lamport.numberOfMsg > 0); // Number of message must bigger than 0
 
+    // Get n and p values from mapping array.
     lamport.combValues.n = combination_mapping[*NByte - 1][0];
     lamport.combValues.p = combination_mapping[*NByte - 1][1];
 
@@ -98,6 +60,7 @@ static void init_system(int *NBit, int *NByte, int *LBit, int *LByte, int *msgNu
 
     lamport.messages = generateMessages(lamport.numberOfMsg);  // Generate t message with random length and random bytes
 
+    // Get index of message to sign
     printf("Write message number to sign(0-%d)\n", lamport.numberOfMsg-1);
     getNumFromUser("Message Number: ", msgNumber);
     assert(*msgNumber < lamport.numberOfMsg && *msgNumber >= 0);
@@ -111,7 +74,10 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
     unsigned char msgHash512[crypto_hash_sha512_BYTES];
     unsigned char verifyMsgHash[crypto_hash_sha512_BYTES];
     int msgNumber, NBit, NByte, LBit, LByte;
-    BOOL isverified;
+    mt_t *mt = NULL;
+    ADDR pre_images = NULL;
+    ADDR hash_images = NULL;
+    BOOL isVerified;
 
     init_system(&NBit, &NByte, &LBit, &LByte, &msgNumber);
 
@@ -120,14 +86,21 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
     randombytes_buf(lamport.IP,BIT_TO_BYTE(LBit));
 
     // Generate pre-images and hash-images
-    generateKeysWithIP(LBit, NBit, lamport.combValues.n, lamport.IP, lamport.numberOfMsg);
+    generate_keys_with_ip(LBit, NBit, lamport.combValues.n, lamport.IP, lamport.numberOfMsg);
 
-    crypto_hash_sha512(msgHash512, lamport.messages[msgNumber].msg, lamport.messages[msgNumber].msgLen);    // Calculate hash of message
+    // Create merkle tree
+    mt = build_mt(lamport.hash_images, lamport.numberOfMsg, NByte);
+
+    // Calculate hash of message
+    crypto_hash_sha512(msgHash512, lamport.messages[msgNumber].msg, lamport.messages[msgNumber].msgLen);
 
     lamport.msgHash = malloc(NByte * sizeof(char)); // TODO optimize
     memcpy(lamport.msgHash, msgHash512, NByte);
 
-    signMsg(lamport.msgHash,GET_ADDR(lamport.pre_images, msgNumber, lamport.combValues.n * LByte), LBit, NBit);
+    pre_images = GET_ADDR(lamport.pre_images, msgNumber, lamport.combValues.n * LByte);
+    hash_images = GET_ADDR(lamport.hash_images, msgNumber, lamport.combValues.n * NByte);
+
+    sign_msg(lamport.msgHash, pre_images, hash_images, LBit, NBit, mt, msgNumber);
 
     changeBitService(LBit);
 
@@ -140,9 +113,12 @@ int main(__maybe_unused int argc, __maybe_unused char *argv[])
         printBytes("Receiver hash", verifyMsgHash, NByte);
     }
 
-    isverified = verifyMsg(GET_ADDR(lamport.hash_images, msgNumber, lamport.combValues.n * NByte), lamport.signature, verifyMsgHash, LBit, NBit);
+    // Root hash
+    printBytes("root hash",GET_ROOT_HASH(mt), NByte);
 
-    if (isverified)
+    isVerified = verify_msg(GET_ROOT_HASH(mt), lamport.signature, verifyMsgHash, LBit, NBit, mt->height, msgNumber);
+
+    if (isVerified)
         printf("Message verified\n");
     else
         printf("Message not verified\n");

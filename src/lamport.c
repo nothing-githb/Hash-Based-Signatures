@@ -6,9 +6,9 @@
 #include <lamport.h>
 #include <string.h>
 #include <types.h>
-
+#include <merkle_tree.h>
 #include <mapping.h>
-
+#include <helper.h>
 #include <openssl/aes.h>
 
 tLamport lamport = {
@@ -22,19 +22,6 @@ tLamport lamport = {
         .numberOfMsg = 0,
         .IP = NULL
 };
-
-static void printBytes(const char *msg, ADDR addr, int length)
-{
-    int i;
-    printf("\n----%s---", msg);
-    for (i = 0; i < length; i++)
-    {
-        if (i % 20 == 0)
-            printf("\n");
-        printf("%d ", ((unsigned char *)addr)[i]);
-    }
-    printf("\n\n");
-}
 
 static inline void incrementOne(unsigned char *bytes, int size)
 {
@@ -72,10 +59,10 @@ static inline void encryptWithGivenSize(unsigned char *input, unsigned char *out
     incrementOne(input, byte);
 }
 
-void generateKeysWithIP(int length, int hashLength, int n, const char *IP, int t)
+void generate_keys_with_ip(int length, int hash_length, int total_number, const char *IP, int number_of_msg)
 {
     unsigned char msgHash512[crypto_hash_sha512_BYTES];
-    int LByte = length / 8, NByte = hashLength / 8;
+    int LByte = length / 8, NByte = hash_length / 8;
     unsigned char ip[LByte], out[LByte], key[16];
     AES_KEY AESKey;
     int i, j;
@@ -85,17 +72,17 @@ void generateKeysWithIP(int length, int hashLength, int n, const char *IP, int t
 
     memcpy(ip, IP, LByte);  // Copy IP to local ip
 
-    lamport.pre_images = malloc(t * n * LByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
-    lamport.hash_images = malloc(t * n * NByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
+    lamport.pre_images = malloc(number_of_msg * total_number * LByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
+    lamport.hash_images = malloc(number_of_msg * total_number * NByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
 
-    for (j = 0; j < t; j++)
+    for (j = 0; j < number_of_msg; j++)
     {
-        for (i = 0; i < n; i++)
+        for (i = 0; i < total_number; i++)
         {
             encryptWithGivenSize(ip, out, &AESKey, LByte);
-            memcpy(GET_ADDR(lamport.pre_images, j*n+i, LByte), out, LByte);
+            memcpy(GET_ADDR(lamport.pre_images, j * total_number + i, LByte), out, LByte);
             crypto_hash_sha512(msgHash512, out, LByte);
-            memcpy(GET_ADDR(lamport.hash_images, j*n+i, NByte), msgHash512, NByte);
+            memcpy(GET_ADDR(lamport.hash_images, j * total_number + i, NByte), msgHash512, NByte);
             if (DEBUG)
             {
                 printf("%d", i);
@@ -105,57 +92,72 @@ void generateKeysWithIP(int length, int hashLength, int n, const char *IP, int t
         }
     }
 
-    return;
 }
 
-void signMsg(ADDR msgHash, ADDR pre_images, int LBit, int NBit)
+void sign_msg(ADDR msg_hash, ADDR pre_images, ADDR hash_images, int LBit, int NBit, ADDR mt, int index_of_msg)
 {
-    unsigned char msgHash512[crypto_hash_sha512_BYTES];
-
-    int i, a[lamport.combValues.p];
+    mt_t *merkle_tree = (mt_t *) mt;
+    int auxList[merkle_tree->height];
+    int i, j, a[lamport.combValues.p];
+    ADDR addr;
     int LByte = LBit / 8, NByte = NBit / 8;
     mpz_t msgHashValue;
+
     // Calculate message hash value
     mpz_init(msgHashValue);
-    mpz_import(msgHashValue, 1, LByte, sizeof(char), 0, 0, msgHash);
+    mpz_import(msgHashValue, 1, LByte, sizeof(char), 0, 0, msg_hash);
 
-    lamport.signature = malloc(lamport.combValues.p * LByte * sizeof(char));
+    lamport.signature = malloc( (lamport.combValues.p * LByte)
+            + ( (lamport.combValues.n - lamport.combValues.p) * NByte )
+            + ( merkle_tree->height * NByte + 500)
+            );
 
-    // TODO make malloc function
-    if (PRINT) printf("Size of signature : %d bit, %d byte\n", lamport.combValues.p * LBit,
-                      lamport.combValues.p * LByte);
+    if (PRINT) printf("Size of signature : %d bit, %d byte\n", lamport.combValues.p * LBit, lamport.combValues.p * LByte);
 
     get_mapping_from_message(msgHashValue, lamport.combValues.n, lamport.combValues.p, a);
 
-    if (PRINT)
-    {
-        printf("Mapping: ");
-        for (int x = 0; x < lamport.combValues.p; x++)
-            printf("%d ", a[x]);
-        printf("\n");
-    }
+    addr = lamport.signature;
 
-    for(i = 0; i < lamport.combValues.p; i++)
+    for(i = 0, j = 0; i < lamport.combValues.n; i++)
     {
-        memcpy(GET_ADDR(lamport.signature, i, LByte),
-               GET_ADDR(pre_images, a[i] - 1, LByte), LByte);
-        if (DEBUG)
+        if (i >= (a[lamport.combValues.p-1]-1) || i != (a[j] - 1))
         {
-            crypto_hash_sha512(msgHash512, GET_ADDR(lamport.signature, i, LByte), LByte);
-            printBytes("pre-image", GET_ADDR(lamport.signature, i, LByte), LByte);
-            printBytes("hash-image", msgHash512, NByte);
+            memcpy(addr, GET_ADDR(hash_images, i, NByte), NByte);
+            addr += NByte;
+        }
+        else
+        {
+            memcpy(addr, GET_ADDR(pre_images, i, LByte), LByte);
+            addr += LByte;
+            j++;
         }
     }
-    return;
+
+    getAuxList(index_of_msg, auxList, merkle_tree->height);
+
+    for (i = 0; i < merkle_tree->height; i++)
+    {
+        memcpy(addr, merkle_tree->nodes[auxList[i]].hash, NByte);
+        addr += NByte;
+        if (PRINT)
+        {
+            printf("%d\n", auxList[i]);
+            printBytes("node hash", merkle_tree->nodes[auxList[i]].hash, NByte);
+        }
+
+    }
+
 }
 
-BOOL verifyMsg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBit)
+BOOL verify_msg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBit, int mt_height, index_of_msg)
 {
     unsigned char msgHash512[crypto_hash_sha512_BYTES];
-    BOOL isVerified = TRUE;
-    int i = 0, a[lamport.combValues.p];
+    crypto_hash_sha512_state state;
+    int auxList[mt_height];
+    int i, j, a[lamport.combValues.p];
     int LByte = LBit / 8, NByte = NBit / 8;
     mpz_t msgHashValue;
+    ADDR addr;
 
     // Calculate message hash value
     mpz_init(msgHashValue);
@@ -163,26 +165,45 @@ BOOL verifyMsg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBit
 
     get_mapping_from_message(msgHashValue, lamport.combValues.n, lamport.combValues.p, a);
 
-    if (PRINT)
-    {
-        printf("Mapping: ");
-        for (int x = 0; x < lamport.combValues.p; x++)
-            printf("%d ", a[x]);
-        printf("\n");
-    }
-
     mpz_clear(msgHashValue);
-    for (i = 0; i < lamport.combValues.p && isVerified; i++)
+
+    crypto_hash_sha512_init(&state);
+    addr = signature;
+    for (i = 0, j = 0; i < lamport.combValues.n; i++)
     {
-        crypto_hash_sha512(msgHash512, GET_ADDR(signature, i, LByte), LByte);
-        isVerified = (0 == memcmp(msgHash512, GET_ADDR(public_key, a[i] - 1, NByte), NByte));
-        if ( DEBUG )
+        if (i >= (a[lamport.combValues.p-1]-1) || i != (a[j] - 1))
         {
-            printBytes("pre-image", GET_ADDR(signature, i, LByte), LByte);
-            printBytes("hash-image", msgHash512, NByte);
-            printBytes("public-key", GET_ADDR(public_key, a[i] - 1, NByte), NByte);
+            crypto_hash_sha512_update(&state, addr, NByte);
+            addr += NByte;
+        }
+        else
+        {
+            crypto_hash_sha512(msgHash512, addr, LByte);
+            crypto_hash_sha512_update(&state, msgHash512, NByte);
+            addr += LByte;
+            j++;
         }
     }
+    crypto_hash_sha512_final(&state, msgHash512);
 
-    return isVerified;
+    getAuxList(index_of_msg, auxList, mt_height);
+
+    for (i = 0;i < mt_height; i++)
+    {
+        crypto_hash_sha512_init(&state);
+        if (0 == (auxList[i] & 1))
+        {
+            crypto_hash_sha512_update(&state, msgHash512, NByte);
+            crypto_hash_sha512_update(&state, addr, NByte);
+        }
+        else
+        {
+            crypto_hash_sha512_update(&state, addr, NByte);
+            crypto_hash_sha512_update(&state, msgHash512, NByte);
+        }
+        crypto_hash_sha512_final(&state, msgHash512);
+        addr += NByte;
+    }
+
+    return (0 == memcmp(msgHash512, public_key, NByte));
 }
