@@ -11,6 +11,6 @@ void getNumFromUser(const char *msg, int *num);
 
 void printBytes(const char *msg, ADDR addr, int length);
 
-void changeBitService(int LBit);
+void change_bit_service(ADDR data, int data_byte, char * msg);
 
 #endif //MCS_HELPER_H

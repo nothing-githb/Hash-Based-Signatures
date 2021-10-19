@@ -10,6 +10,7 @@
 #include <mapping.h>
 #include <helper.h>
 #include <openssl/aes.h>
+#include <crypto.h>
 
 tLamport lamport = {
         .combValues.p = 0,
@@ -20,84 +21,88 @@ tLamport lamport = {
         .msgHash = NULL,
         .messages = NULL,
         .numberOfMsg = 0,
-        .IP = NULL
+        .ip_values = {0},
+        .aes_key = {0}
 };
 
-static inline void incrementOne(unsigned char *bytes, int size)
+void __lamport_fill_mt_leaf_nodes(ADDR mt, ADDR data, const UINT4 NByte)
 {
-    int i;
-    for (i = size-1; i >= 0; i--)
-    {
-        if (0 == ++bytes[i]) continue;
-        else break;
-    }
-}
-
-static inline void encryptWithGivenSize(unsigned char *input, unsigned char *output, ADDR key, size_t byte)
-{
-    unsigned int round = byte >> 4;                 // byte / 16
-    const unsigned int remainderBytes = byte & 0xF;    // byte % 16
-    int diff = byte - remainderBytes;
-    unsigned char remainsIn[16], remainsOut[16];
-
-    while (round > 0)
-    {
-        AES_encrypt(input, output, key);
-        input += 16;
-        output += 16;
-        round--;
-    }
-    if (remainderBytes > 0)
-    {
-        memcpy(remainsIn, input, remainderBytes);  // Copy remainder bytes
-        memset(remainsIn + remainderBytes, 0, 16 - remainderBytes);    // Do padding after remainder bytes
-        AES_encrypt(remainsIn, remainsOut, key);    // Encrypt
-        memcpy(output, remainsOut, remainderBytes);    // Get encrypted
-    }
-    input -= diff;
-    output -= diff;
-    incrementOne(input, byte);
-}
-
-void generate_keys_with_ip(int length, int hash_length, int total_number, const char *IP, int number_of_msg)
-{
+    int i, offset;
+    int public_key_size = lamport.combValues.n * NByte;
     unsigned char msgHash512[crypto_hash_sha512_BYTES];
-    int LByte = length / 8, NByte = hash_length / 8;
+    ADDR addr = data;
+    mt_t* merkle_tree = (mt_t *) mt;
+
+    offset = merkle_tree->num_of_nodes - merkle_tree->num_of_leaf_nodes;
+
+    // Fill leaf nodes
+    for (i = 0; i < merkle_tree->num_of_leaf_nodes; i++)
+    {
+        crypto_hash_sha512(msgHash512, addr, public_key_size);  // Calculate hash of public key(hash-images)
+        merkle_tree->nodes[offset+i].hash = malloc(NByte * sizeof(char));    // Allocate memory for hash
+        memcpy(merkle_tree->nodes[offset+i].hash, msgHash512, NByte);    // Copy calculated hash into the node's hash memory
+        addr += public_key_size;
+        if (PRINT)
+        {
+            printf("%d\n", offset+i);
+            printBytes("leafs", merkle_tree->nodes[offset+i].hash, NByte);
+        }
+    }
+}
+
+void generate_keys_with_ip(int len, int hash_len, int total_number, tIP_values ip_values, int num_of_msg, ADDR* pre_images, ADDR* hash_images)
+{
+    unsigned char msg_hash_512[crypto_hash_sha512_BYTES];
+    int LByte = len / 8, NByte = hash_len / 8;
     unsigned char ip[LByte], out[LByte], key[16];
-    AES_KEY AESKey;
+    AES_KEY AESKey; // FIXME must be removed
     int i, j;
 
+    // FIXME there is no need the key in new WBT-Ek
     randombytes_buf(key, 16);   // Generate random key
     AES_set_encrypt_key(&key, 128, &AESKey);    // Set AES encryption key
 
-    memcpy(ip, IP, LByte);  // Copy IP to local ip
+    memcpy(ip, ip_values.IP, LByte);  // Copy IP to local ip
+    memcpy(&lamport.aes_key, &AESKey, sizeof(AES_KEY));
 
-    lamport.pre_images = malloc(number_of_msg * total_number * LByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
-    lamport.hash_images = malloc(number_of_msg * total_number * NByte * sizeof(char));    // Allocate memory for hash values(public pre_images)
+    *pre_images = malloc(num_of_msg * total_number * LByte * sizeof(char));    // Allocate memory for pre-images
+    *hash_images = malloc(num_of_msg * total_number * NByte * sizeof(char));    // Allocate memory for hash-images
 
-    for (j = 0; j < number_of_msg; j++)
+    printf("%d pre-image and hash-images created\n", num_of_msg * total_number);
+
+    for (j = 0; j < num_of_msg; j++)
     {
         for (i = 0; i < total_number; i++)
         {
             encryptWithGivenSize(ip, out, &AESKey, LByte);
-            memcpy(GET_ADDR(lamport.pre_images, j * total_number + i, LByte), out, LByte);
-            crypto_hash_sha512(msgHash512, out, LByte);
-            memcpy(GET_ADDR(lamport.hash_images, j * total_number + i, NByte), msgHash512, NByte);
+            increment_bytes(ip, LByte,ip_values.increment_value);
+            memcpy(GET_ADDR((*pre_images), j * total_number + i, LByte), out, LByte);      // TODO optimize addr calc
+            crypto_hash_sha512(msg_hash_512, out, LByte);
+            memcpy(GET_ADDR((*hash_images), j * total_number + i, NByte), msg_hash_512, NByte);    // TODO optimize addr calc
             if (DEBUG)
             {
-                printf("%d", i);
-                printBytes("pre-image", GET_ADDR(lamport.pre_images, i, LByte), LByte);
-                printBytes("hash-image", GET_ADDR(lamport.hash_images, i, NByte), NByte);
+                printf("%d ", i);
+                printBytes("pre-image", GET_ADDR((*pre_images), i, LByte), LByte);
+                printBytes("hash-image", GET_ADDR((*hash_images), i, NByte), NByte);
             }
         }
     }
-
 }
 
+/**
+ * TODO change with white-box
+ * for 1≤s≤N
+ *  if h′ = 0
+ *      computers,1,t = WBT-EK(IP+t∗2N+2s−1)
+ *      reveal rs,1,t and f(rs,2,t)
+ *  else
+ *      computers,2,t = WBT-EK(IP+t∗2N+2s)
+ *      reveal f(rs,1,t) and rs,2,t
+ *
+ */
 void sign_msg(ADDR msg_hash, ADDR pre_images, ADDR hash_images, int LBit, int NBit, ADDR mt, int index_of_msg)
 {
     mt_t *merkle_tree = (mt_t *) mt;
-    int auxList[merkle_tree->height];
     int i, j, a[lamport.combValues.p];
     ADDR addr;
     int LByte = LBit / 8, NByte = NBit / 8;
@@ -105,11 +110,12 @@ void sign_msg(ADDR msg_hash, ADDR pre_images, ADDR hash_images, int LBit, int NB
 
     // Calculate message hash value
     mpz_init(msgHashValue);
-    mpz_import(msgHashValue, 1, LByte, sizeof(char), 0, 0, msg_hash);
+    // mpz_import (mpz_t rop, size_t count, int order, size_t size, int endian, size_t nails, const void *op)
+    mpz_import(msgHashValue, 1, 1, LByte, 0, 0, msg_hash);
 
-    lamport.signature = malloc( (lamport.combValues.p * LByte)
-            + ( (lamport.combValues.n - lamport.combValues.p) * NByte )
-            + ( merkle_tree->height * NByte + 500)
+    lamport.signature = malloc( (lamport.combValues.p * LByte)          // pre-images in signature
+            + ( (lamport.combValues.n - lamport.combValues.p) * NByte )      // hash images except singature's pre-images
+            + ( merkle_tree->height * NByte )                                // aux
             );
 
     if (PRINT) printf("Size of signature : %d bit, %d byte\n", lamport.combValues.p * LBit, lamport.combValues.p * LByte);
@@ -133,27 +139,15 @@ void sign_msg(ADDR msg_hash, ADDR pre_images, ADDR hash_images, int LBit, int NB
         }
     }
 
-    getAuxList(index_of_msg, auxList, merkle_tree->height);
+    mt_generate_aux(merkle_tree, index_of_msg, NByte, addr);
 
-    for (i = 0; i < merkle_tree->height; i++)
-    {
-        memcpy(addr, merkle_tree->nodes[auxList[i]].hash, NByte);
-        addr += NByte;
-        if (PRINT)
-        {
-            printf("%d\n", auxList[i]);
-            printBytes("node hash", merkle_tree->nodes[auxList[i]].hash, NByte);
-        }
-
-    }
-
+    return;
 }
 
-BOOL verify_msg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBit, int mt_height, index_of_msg)
+BOOL verify_msg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBit, int mt_num_of_leaf_nodes, int index_of_msg)
 {
     unsigned char msgHash512[crypto_hash_sha512_BYTES];
     crypto_hash_sha512_state state;
-    int auxList[mt_height];
     int i, j, a[lamport.combValues.p];
     int LByte = LBit / 8, NByte = NBit / 8;
     mpz_t msgHashValue;
@@ -161,14 +155,17 @@ BOOL verify_msg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBi
 
     // Calculate message hash value
     mpz_init(msgHashValue);
-    mpz_import(msgHashValue, 1, NByte, sizeof(char), 0, 0, msgHash);
+
+    // mpz_import (mpz_t rop, size_t count, int order, size_t size, int endian, size_t nails, const void *op)
+    mpz_import(msgHashValue, 1, 1, NByte, 0, 0, msgHash);
 
     get_mapping_from_message(msgHashValue, lamport.combValues.n, lamport.combValues.p, a);
 
     mpz_clear(msgHashValue);
 
-    crypto_hash_sha512_init(&state);
     addr = signature;
+
+    crypto_hash_sha512_init(&state);
     for (i = 0, j = 0; i < lamport.combValues.n; i++)
     {
         if (i >= (a[lamport.combValues.p-1]-1) || i != (a[j] - 1))
@@ -186,24 +183,5 @@ BOOL verify_msg(ADDR public_key, ADDR signature, ADDR msgHash, int LBit, int NBi
     }
     crypto_hash_sha512_final(&state, msgHash512);
 
-    getAuxList(index_of_msg, auxList, mt_height);
-
-    for (i = 0;i < mt_height; i++)
-    {
-        crypto_hash_sha512_init(&state);
-        if (0 == (auxList[i] & 1))
-        {
-            crypto_hash_sha512_update(&state, msgHash512, NByte);
-            crypto_hash_sha512_update(&state, addr, NByte);
-        }
-        else
-        {
-            crypto_hash_sha512_update(&state, addr, NByte);
-            crypto_hash_sha512_update(&state, msgHash512, NByte);
-        }
-        crypto_hash_sha512_final(&state, msgHash512);
-        addr += NByte;
-    }
-
-    return (0 == memcmp(msgHash512, public_key, NByte));
+    return mt_verify_public_with_aux(public_key, msgHash512, addr, index_of_msg, mt_num_of_leaf_nodes, NByte);
 }

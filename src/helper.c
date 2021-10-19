@@ -6,7 +6,7 @@
 #include <helper.h>
 #include <lamport.h>
 
-// TODO optimize, change with table instead of bbit shifting
+// TODO optimize, change with table instead of bit shifting
 static inline void changeBitOfByte(ADDR base, const unsigned int byte, const unsigned int bit)
 {
     int *number = (int *)(&base[byte]);
@@ -35,15 +35,12 @@ void printBytes(const char *msg, ADDR addr, int length)
     printf("\n\n");
 }
 
-void changeBitService(int LBit)
+void change_bit_service(ADDR data, int data_byte, char * msg)
 {
     int byte, bit;
-    if( CHANGE_BIT_SERVICE )
-    {
-        printBytes("Signature", lamport.signature, lamport.combValues.p * LBit / 8);
-        getNumFromUser("Get nth byte for change:", &byte);
-        getNumFromUser("Get nth bit for change: ", &bit);
-        changeBitOfByte(lamport.signature, byte, bit);    // Change bit
-        printBytes("Signature", lamport.signature, lamport.combValues.p * LBit / 8);
-    }
+    printBytes(msg, data, data_byte);
+    getNumFromUser("Get nth byte for change:", &byte);
+    getNumFromUser("Get nth bit for change: ", &bit);
+    changeBitOfByte(data, byte, bit);    // Change bit
+    printBytes(msg, data, data_byte);
 }
