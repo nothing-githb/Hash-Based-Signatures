@@ -1,17 +1,23 @@
 //
-// Created by Halis Şahin on 10.10.2021.
+// Created by Halis Şahin on 19.02.2022.
 //
 
 #ifndef MCS_OTP_H
 #define MCS_OTP_H
 
+#include <stdint.h>
 
-void __otp_fill_mt_leaf_nodes(ADDR mt, ADDR data, const UINT4 NByte);
+/************      Client side functions      ************/
 
-BOOL verify_otp(ADDR public_key, ADDR otp, ADDR aux, int LBit, int NBit, int mt_height, int index_of_msg);
+uint8_t* init_otp(void);
 
-void generate_totp(ADDR IP, int time_slot, AES_KEY aes_key, int LByte, int day, char *out);
+uint8_t* generate_otp(void);
 
-unsigned long calculate_index(time_t initial_time, time_t current_time, int time_slot);
+/************      Server side functions      ************/
+
+void server_init_otp(uint8_t * public_values);
+
+int verify_otp(uint8_t* otp_with_aux);
+
 
 #endif //MCS_OTP_H
